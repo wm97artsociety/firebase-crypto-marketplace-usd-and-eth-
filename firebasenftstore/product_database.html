@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Database</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #e0f0ff;
+            color: #000;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow-x: auto; /* Add horizontal scroll for very small screens if table overflows */
+        }
+        h1, h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50; /* Green border */
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+         h2 {
+             border-bottom-color: #0073e6; /* Blue border for sections */
+         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px; /* More space after tables */
+            table-layout: fixed; /* Fix table layout to respect column widths */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px; /* Increased padding */
+            text-align: left;
+            word-wrap: break-word; /* Ensure long words break and wrap */
+            overflow-wrap: break-word; /* Modern standard for word wrapping */
+            font-size: 14px; /* Explicitly set font size in pixels */
+        }
+         th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            font-size: 14px; /* Explicitly set font size for headers too */
+        }
+        td img {
+            width: 60px; /* Slightly larger images */
+            height: auto;
+            border-radius: 4px;
+            vertical-align: middle;
+             /* Prevent images from overflowing their cells */
+            max-width: 100%;
+            height: auto;
+        }
+         tbody tr:nth-child(even) {
+             background-color: #f9f9f9; /* Zebra striping */
+         }
+         tbody tr:hover {
+             background-color: #e9e9e9; /* Hover effect */
+         }
+        .back-button {
+            display: inline-block;
+            background-color: #555; /* Darker grey */
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+        .back-button:hover {
+            background-color: #333;
+        }
+        .status-message {
+            font-style: italic;
+            color: #777;
+        }
+
+        /* --- Responsive Table Column Widths --- */
+        /* Adjust these percentages based on your data and desired layout */
+
+        #productTable th:nth-child(1),
+        #productTable td:nth-child(1) { width: 8%; } /* Image */
+        #productTable th:nth-child(2),
+        #productTable td:nth-child(2) { width: 15%; } /* Name */
+        #productTable th:nth-child(3),
+        #productTable td:nth-child(3) { width: 35%; } /* Description */
+        #productTable th:nth-child(4),
+        #productTable td:nth-child(4) { width: 15%; } /* Keywords */
+        #productTable th:nth-child(5),
+        #productTable td:nth-child(5) { width: 10%; } /* ETH Price */
+        #productTable th:nth-child(6),
+        #productTable td:nth-child(6) { width: 17%; } /* USD Equivalent */
+        /* Add widths for Seller Wallet/Username if you uncomment those columns */
+        /*
+        #productTable th:nth-child(7),
+        #productTable td:nth-child(7) { width: XX%; } // Seller Wallet
+        #productTable th:nth-child(8),
+        #productTable td:nth-child(8) { width: XX%; } // Seller Username
+        */
+
+
+        #orderTable th:nth-child(1),
+        #orderTable td:nth-child(1) { width: 10%; } /* Order ID */
+        #orderTable th:nth-child(2),
+        #orderTable td:nth-child(2) { width: 15%; } /* Product Name */
+        #orderTable th:nth-child(3),
+        #orderTable td:nth-child(3) { width: 8%; }  /* Quantity */
+        #orderTable th:nth-child(4),
+        #orderTable td:nth-child(4) { width: 25%; } /* Buyer Wallet Address */
+        #orderTable th:nth-child(5),
+        #orderTable td:nth-child(5) { width: 20%; } /* Shipping Address */
+        #orderTable th:nth-child(6),
+        #orderTable td:nth-child(6) { width: 12%; } /* City */
+        #orderTable th:nth-child(7),
+        #orderTable td:nth-child(7) { width: 10%; } /* Order Date */
+         /* Add widths for any other order detail columns */
+
+
+         /* --- Optional: Basic Mobile Responsiveness (for very small screens) --- */
+         /* This makes rows stack vertically and uses data-labels, but keeps text size fixed */
+         @media (max-width: 600px) {
+             .container {
+                 padding: 10px;
+             }
+             table {
+                 /* Remove fixed layout on very small screens if stacking rows */
+                 table-layout: auto;
+             }
+             table, thead, tbody, th, td, tr {
+                 display: block; /* Stack elements */
+             }
+             thead tr {
+                 position: absolute;
+                 top: -9999px;
+                 left: -9999px; /* Hide table headers visually */
+             }
+             tr { border: 1px solid #ccc; margin-bottom: 5px; }
+
+             td {
+                 border: none;
+                 border-bottom: 1px solid #eee;
+                 position: relative;
+                 padding-left: 50%; /* Make space for the label */
+                 text-align: right; /* Align content to the right */
+             }
+
+             td:before {
+                 position: absolute;
+                 top: 6px;
+                 left: 6px;
+                 width: 45%;
+                 padding-right: 10px;
+                 white-space: nowrap;
+                 content: attr(data-label); /* Use data-label for heading */
+                 font-weight: bold;
+                 text-align: left;
+             }
+
+             /* Image cell needs specific handling when stacking */
+             td:first-child {
+                 text-align: center;
+                 padding-left: 6px; /* Adjust padding */
+             }
+              td:first-child img {
+                 display: block; /* Center image */
+                 margin: 0 auto;
+              }
+
+
+         }
+
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="#" id="backButton" class="back-button">← Back</a>
+        <h1>📦 Product and Order Database</h1>
+
+        <section>
+            <h2>Product Listings (from Firestore)</h2>
+            <table id="productTable">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Keywords</th>
+                        <th>ETH Price</th>
+                        <th>USD Equivalent</th>
+                         </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+            <p id="productLoadingStatus" class="status-message">Loading products...</p>
+        </section>
+
+        <section>
+            <h2>Order Listings (from Firestore)</h2>
+            <table id="orderTable">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Product Name</th>
+                        <th>Quantity</th>
+                        <th>Buyer Wallet Address</th>
+                        <th>Shipping Address</th>
+                        <th>City</th>
+                        <th>Order Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+             <p id="orderLoadingStatus" class="status-message">Loading orders...</p>
+        </section>
+    </div>
+
+    <script>
+        // Firebase Configuration (REPLACE WITH YOUR ACTUAL CONFIG)
+        const firebaseConfig = {
+          apiKey: "YOUR_API_KEY",
+          authDomain: "YOUR_AUTH_DOMAIN",
+          projectId: "YOUR_PROJECT_ID",
+          storageBucket: "YOUR_STORAGE_BUCKET",
+          messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+          appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        let ethToUsdRate = 0;
+
+        // Function to fetch ETH to USD rate
+        async function fetchEthToUsdRate() {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+                const data = await response.json();
+                ethToUsdRate = data.ethereum.usd;
+            } catch (error) {
+                console.error('Error fetching ETH to USD rate:', error);
+                ethToUsdRate = 0; // Set to 0 if fetching fails
+            }
+        }
+
+        // Function to fetch and display products from Firestore
+        async function fetchAndDisplayProducts() {
+            const productTableBody = document.getElementById('productTable').querySelector('tbody');
+            const productLoadingStatus = document.getElementById('productLoadingStatus');
+            productTableBody.innerHTML = ''; // Clear existing data
+            productLoadingStatus.textContent = 'Loading products...';
+
+            try {
+                const productsSnapshot = await db.collection('products').get();
+                const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); // Include doc id
+
+                if (products.length === 0) {
+                    productLoadingStatus.textContent = 'No products available in Firestore.';
+                    return;
+                }
+
+                productLoadingStatus.textContent = ''; // Clear loading status
+                const productHeaders = ["Image", "Name", "Description", "Keywords", "ETH Price", "USD Equivalent"]; // Match your table headers
+                products.forEach(product => {
+                    const row = productTableBody.insertRow();
+                    const usdValue = ethToUsdRate ? (product.ethPrice * ethToUsdRate).toFixed(2) : 'N/A';
+                    const descriptionPreview = product.description && product.description.length > 100 ? product.description.substring(0, 100) + '...' : product.description || 'N/A';
+
+                    const cellData = [
+                         `<img src="${product.image || 'placeholder-image.png'}" alt="${product.name}">`,
+                         product.name || 'N/A',
+                         descriptionPreview,
+                         product.keywords && product.keywords.length > 0 ? product.keywords.join(', ') : 'N/A',
+                         (product.ethPrice || 'N/A') + ' ETH',
+                         '$' + usdValue
+                         /* Add seller wallet/username data here if included in Firestore doc
+                         product.sellerWallet || 'N/A',
+                         product.sellerUsername || 'N/A'
+                         */
+                    ];
+
+                    cellData.forEach((data, index) => {
+                        const cell = row.insertCell(index);
+                        cell.innerHTML = data;
+                         // Add data-label attributes for small screen responsiveness
+                         if (productHeaders[index]) {
+                             cell.setAttribute('data-label', productHeaders[index]);
+                         }
+                    });
+                });
+            } catch (error) {
+                console.error("Error fetching products:", error);
+                productLoadingStatus.textContent = 'Error loading products: ' + error.message;
+            }
+        }
+
+        // Function to fetch and display orders from Firestore
+        // This assumes you are storing orders in a Firestore collection named 'orders'
+        // and that order documents include fields like 'productName', 'quantity',
+        // 'buyerWalletAddress', 'shippingAddress', 'city', 'timestamp'
+        async function fetchAndDisplayOrders() {
+            const orderTableBody = document.getElementById('orderTable').querySelector('tbody');
+            const orderLoadingStatus = document.getElementById('orderLoadingStatus');
+            orderTableBody.innerHTML = ''; // Clear existing data
+            orderLoadingStatus.textContent = 'Loading orders...';
+
+            try {
+                const ordersSnapshot = await db.collection('orders').orderBy('timestamp', 'desc').get(); // Order by date, newest first
+                const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); // Include doc id
+
+                if (orders.length === 0) {
+                    orderLoadingStatus.textContent = 'No orders available in Firestore.';
+                    return;
+                }
+
+                orderLoadingStatus.textContent = ''; // Clear loading status
+                const orderHeaders = ["Order ID", "Product Name", "Quantity", "Buyer Wallet Address", "Shipping Address", "City", "Order Date"]; // Match your table headers
+                orders.forEach(order => {
+                    const row = orderTableBody.insertCell();
+                     const orderDate = order.timestamp ? new Date(order.timestamp.toDate()).toLocaleString() : 'N/A'; // Format timestamp
+
+                    const cellData = [
+                        order.id || 'N/A',
+                        order.productName || 'N/A',
+                        order.quantity || 'N/A',
+                        order.buyerWalletAddress || 'N/A',
+                        order.shippingAddress || 'N/A',
+                        order.city || 'N/A',
+                        orderDate
+                        /* Add other order details here if included in Firestore doc */
+                    ];
+
+                    cellData.forEach((data, index) => {
+                        const cell = row.insertCell(index);
+                        cell.innerHTML = data;
+                         // Add data-label attributes for small screen responsiveness
+                         if (orderHeaders[index]) {
+                             cell.setAttribute('data-label', orderHeaders[index]);
+                         }
+                     });
+                });
+            } catch (error) {
+                console.error("Error fetching orders:", error);
+                orderLoadingStatus.textContent = 'Error loading orders: ' + error.message;
+            }
+        }
+
+        // Load data when the page is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Get the back button element
+            const backButton = document.getElementById('backButton');
+            const urlParams = new URLSearchParams(window.location.search);
+            const source = urlParams.get('source'); // Get the 'source' parameter
+
+            if (source === 'seller') {
+                // If source is 'seller', link back to the Seller Panel
+                backButton.textContent = '← Back to Seller Panel';
+                // *** CORRECTED: Linking to 'upanel.html' based on your file name ***
+                backButton.href = 'upanel.html'; // <--- UPDATED THIS LINE
+            } else {
+                // Default or if source is 'admin', link back to the Admin Panel
+                backButton.textContent = '← Back to Admin Panel';
+                backButton.href = 'admin.html'; // Assuming your Admin Panel is admin.html
+            }
+
+
+            await fetchEthToUsdRate(); // Fetch rate first
+            fetchAndDisplayProducts();
+            fetchAndDisplayOrders();
+        });
+    </script>
+</body>
+</html>

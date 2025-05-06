@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔑 Seller Panel</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #e0f0ff;
+      color: #000;
+      padding: 20px;
+    }
+    .box {
+      background-color: #f0f0f0;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    }
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+    }
+    input:not([type="checkbox"]), button, textarea, select {
+      padding: 8px 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    textarea {
+      resize: vertical;
+      height: 100px;
+       margin-bottom: 10px;
+    }
+    button {
+      cursor: pointer;
+       margin-top: 5px;
+       width: auto;
+       padding: 10px 15px;
+       font-weight: bold;
+    }
+     button.delete-btn {
+        background: red;
+        color: white;
+        border: none;
+        margin-left: 10px;
+      }
+      button.delete-btn:hover {
+        background: darkred;
+      }
+
+    #statusMessage {
+      color: red;
+      display: none;
+      margin-top: 10px;
+    }
+
+    /* Styles for sections visible after wallet connection */
+    #connectedContent {
+        display: none; /* Hidden by default */
+    }
+
+      /* Green button style (used for the Home button and Tax Portal) */
+         .green-button {
+             background-color: #4CAF50;
+             color: white;
+             padding: 10px 15px;
+             border: none;
+             border-radius: 5px;
+             cursor: pointer;
+             font-size: 16px;
+         }
+         .green-button:hover {
+             background-color: #45a049;
+         }
+
+       /* Style for the Tax Portal button */
+       .tax-portal-button {
+          margin-top: 0;
+          width: 100%;
+          display: block;
+       }
+
+         /* Order List Styling */
+         #orderList {
+             list-style: none;
+             padding: 0;
+         }
+         #orderList li {
+             border-bottom: 1px solid #ccc;
+             padding: 10px 0;
+             margin-bottom: 10px;
+         }
+          #orderList li:last-child {
+              border-bottom: none;
+              margin-bottom: 0;
+          }
+
+          /* Support Message List Styling */
+          #supportMessageList {
+              list-style: none;
+              padding: 0;
+          }
+          #supportMessageList li {
+              border-bottom: 1px solid #ccc;
+              padding: 10px 0;
+              margin-bottom: 10px;
+          }
+           #supportMessageList li:last-child {
+               border-bottom: none;
+               margin-bottom: 0;
+           }
+
+           /* Styles for Product List (if you decide to add it back) */
+            #productList {
+                margin-top: 20px;
+                /* text-align: center; */ /* Align left for list items */
+            }
+            .product-item {
+                border: 1px solid #ccc;
+                padding: 10px;
+                margin-bottom: 10px;
+                border-radius: 5px;
+                background-color: #fff;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                word-break: break-word;
+            }
+             .product-item img {
+                width: 60px;
+                height: auto;
+                border-radius: 4px;
+            }
+             .product-details {
+                 flex-grow: 1;
+             }
+              .product-details h4 {
+                 margin: 0 0 5px 0;
+              }
+               .product-details p {
+                  margin: 0 0 3px 0;
+                  font-size: 0.9em;
+                  color: #555;
+               }
+                .product-details a {
+                   color: #0073e6;
+                   text-decoration: none;
+                }
+                 .product-details a:hover {
+                    text-decoration: underline;
+                 }
+
+        /* Style for the save confirmation message */
+        #saveStatusMessage {
+            color: green;
+            margin-top: 10px;
+            font-weight: bold;
+            display: none; /* Hidden by default */
+        }
+
+
+  </style>
+</head>
+<body>
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1 style="margin: 0;">🔑 Seller Panel</h1>
+    <button onclick="location.href='index.html'" class="green-button">🏠 Home</button>
+  </div>
+
+  <div class="box">
+    <h2>🌐 Connect Your Wallet</h2>
+    <p>Connect your wallet (e.g., MetaMask, OKX Wallet) to access your seller dashboard.</p>
+    <button id="connectWalletBtn" class="green-button">🔗 Connect Wallet</button>
+     <p id="statusMessage" style="color: red;">Please connect your wallet to continue.</p>
+     <p id="connectedWalletAddress" style="display: none; margin-top: 10px;">Connected Wallet: <span id="walletDisplay"></span></p>
+  </div>
+
+  <div class="box" id="regionBox">
+    <h2>🌍 Your Region</h2>
+    <p>Your detected region for tax calculations and compliance.</p>
+    <p id="regionOutput">Detecting region...</p>
+  </div>
+
+  <div id="connectedContent">
+
+    <div class="box">
+       <h2>📦 Add/Manage Products</h2>
+
+       <h3>Add a New Product (Standard)</h3>
+       <label>📝 Product Name: <input id="productName" /></label>
+       <label>🧾 Description: <textarea id="productDescription"></textarea></label>
+       <label>🔑 SEO Keywords (comma-separated): <input id="productKeywords" /></label>
+       <label>💰 ETH Price: <input id="ethPrice" type="number" step="any" /></label>
+       <label>💵 USD Equivalent: <input id="usdPrice" readonly /></label>
+       <label>🗂️ Upload Image: <input type="file" id="productImageFile" accept="image/*" /></label>
+
+       <hr style="margin: 20px 0;">
+
+       <h3>Add an NFT Listing (Optional)</h3>
+       <p>Fill these fields instead of/in addition to the above if listing an NFT.</p>
+       <label>🔗 NFT Contract Address: <input id="nftContractAddress" placeholder="0x..." /></label>
+       <label>🆔 NFT Token ID: <input id="nftTokenId" type="number" step="1" /></label>
+        <label>🔑 SEO Keywords (comma-separated): <input id="nftKeywords" /></label>
+         <label>💰 ETH Price: <input id="nftEthPrice" type="number" step="any" /></label>
+         <label>💵 USD Equivalent: <input id="nftUsdPrice" readonly /></label>
+
+        <hr style="margin: 20px 0;">
+
+        <h4>Lazy List on Marketplace (Requires Integration)</h4>
+        <p>To list an NFT with lazy gas fees, you need to integrate with a specific NFT marketplace API that supports this feature.</p>
+        <button onclick="alert('Lazy listing requires integration with a marketplace API (e.g., OpenSea, Rarible) and wallet signing. This functionality is not yet implemented.')" class="green-button">✨ Lazy List NFT</button>
+        <p style="font-size: 0.9em; color: #555; margin-top: 5px;">*This button is a placeholder. Actual implementation needs marketplace API calls and wallet signing.</p>
+
+
+       <hr style="margin: 20px 0;">
+
+       <h3>Add Social Media/External Links (Optional)</h3>
+       <label>📷 Instagram URL: <input id="instagramUrl" placeholder="https://www.instagram.com/..." /></label>
+       <label>🕺 TikTok URL: <input id="tiktokUrl" placeholder="https://www.tiktok.com/@..." /></label>
+       <label>🌐 Other Link: <input id="otherLinkUrl" placeholder="https://..." /></label>
+        <label>📝 Link Title: <input id="linkTitle" placeholder="e.g., Artist Website" /></label>
+        <label>📋 Link Details: <textarea id="linkDetails" placeholder="Brief description of the link..."></textarea></label>
+        <label>🔑 SEO Keywords (comma-separated): <input id="socialLinkKeywords" /></label>
+        <label>💰 ETH Price: <input id="socialLinkEthPrice" type="number" step="any" /></label>
+        <label>💵 USD Equivalent: <input id="socialLinkUsdPrice" readonly /></label>
+
+
+       <button id="addProductBtn" class="green-button">➕ Add Product</button>
+       <button id="clearFieldsBtn" class="connect-btn">🧹 Clear Fields</button>
+
+
+       <h3 style="margin-top: 30px;">🗃️ View Your Product Listings</h3>
+       <div id="productList">
+            <p>Your product listings are managed and viewed in the Product Database.</p>
+            <button onclick="location.href='product_database.html?source=seller'" class="green-button product-database-button">📂 Go to Product Database</button>
+           </div>
+         </div>
+
+
+    <div class="box">
+      <h2>📬 Your Orders</h2>
+      <button id="orderNotificationBtn">🔔 New Orders <span class="notification-counter" id="orderCounter">0</span></button>
+      <button id="deleteAllOrdersBtn" class="delete-btn">🗑️ Delete All Orders</button>
+      <p>Total Order Value (Estimate): $<span id="sellerOrderValue">0</span></p>
+      <div id="orderListContainer" style="display: none;">
+        <h4>Recent Orders for Your Items</h4>
+        <ul id="orderList"></ul>
+      </div>
+    </div>
+
+    <div id="supportMessagesContainer" class="box">
+      <h2>💬 Your Support Messages</h2>
+      <ul id="supportMessageList"></ul>
+      <button id="deleteAllMessagesBtn" class="delete-btn">🗑️ Delete All Messages</button>
+
+      </div>
+
+    <div class="box">
+        <h2>📊 Taxation</h2>
+        <button onclick="location.href='crypto_tax.html'" class="green-button tax-portal-button">💰 Tax Portal</button>
+    </div>
+
+    <div class="box">
+        <h2>💳 Your Payment Methods</h2>
+        <p>Enter the details buyers can use to pay you via alternative methods.</p>
+
+        <label for="venmoIdentifier">📱 Venmo ID/Link:</label>
+        <input type="text" id="venmoIdentifier" placeholder="@YourVenmoID or https://venmo.com/u/..." />
+
+        <label for="cashAppIdentifier">💸 Cash App Tag/Link:</label>
+        <input type="text" id="cashAppIdentifier" placeholder="$YourCashtag or https://cash.app/$..." />
+
+        <label for="paypalIdentifier">🅿️ PayPal Email/Link:</label>
+        <input type="text" id="paypalIdentifier" placeholder="your.email@example.com or https://paypal.me/..." />
+
+        <label for="googlePayIdentifier">💳 Google Pay Identifier:</label>
+        <input type="text" id="googlePayIdentifier" placeholder="Your Google Pay Identifier" />
+
+        <label for="applePayIdentifier"> Apple Pay Identifier:</label>
+        <input type="text" id="applePayIdentifier" placeholder="Your Apple Pay Identifier" />
+
+        <button id="savePaymentInfoBtn" class="green-button">💾 Save Payment Info</button>
+
+        <p id="saveStatusMessage">Payment information saved successfully!</p>
+
+    </div>
+
+
+  </div>
+<script>
+// --- Firebase Configuration: REPLACE WITH YOUR ACTUAL CONFIG ---
+// You can find this in your Firebase project settings -> General -> Your apps
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY", // Replace with your API Key
+  authDomain: "YOUR_AUTH_DOMAIN", // Replace with your Auth Domain
+  projectId: "YOUR_PROJECT_ID", // Replace with your Project ID
+  storageBucket: "YOUR_STORAGE_BUCKET", // Replace with your Storage Bucket
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace with your Messaging Sender ID
+  appId: "YOUR_APP_ID" // Replace with your App ID
+};
+
+// Initialize Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore(); // Firestore reference
+const storage = firebase.storage(); // Storage reference (Needed for image uploads)
+
+
+let ethToUsd = 0; // Variable to store the current ETH to USD rate
+let connectedWallet = null; // Variable to store the connected wallet address
+let provider; // Ethers provider
+let signer; // Ethers signer
+
+
+// Fetch ETH to USD price from CoinGecko API
+async function fetchEthUsdPrice() {
+  try {
+    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+    const data = await response.json();
+    ethToUsd = parseFloat(data.ethereum.usd);
+    console.log("Fetched ETH to USD rate:", ethToUsd);
+    // Update USD equivalent fields after fetching the rate
+     updateUsdFields();
+    // If wallet is already connected, reload orders to update USD values
+    if (connectedWallet) {
+        loadOrders(connectedWallet); // Load orders for the connected wallet
+    }
+  } catch (error) {
+    console.error('Error fetching ETH price:', error);
+    ethToUsd = 0; // Set to 0 or a fallback on error
+     updateUsdFields(); // Still attempt to update fields even on error
+  }
+}
+
+// Function to update all USD equivalent fields based on their corresponding ETH input
+function updateUsdFields() {
+     // Update USD for main product ETH price
+    const ethInput = document.getElementById('ethPrice');
+    const usdOutput = document.getElementById('usdPrice');
+    const ethAmount = parseFloat(ethInput?.value);
+    if (ethInput && usdOutput) {
+        if (!isNaN(ethAmount) && ethToUsd) {
+            usdOutput.value = `$${(ethAmount * ethToUsd).toFixed(2)}`;
+        } else {
+            usdOutput.value = '';
+        }
+    }
+
+     // Update USD for NFT ETH price
+     const nftEthInput = document.getElementById('nftEthPrice');
+     const nftUsdOutput = document.getElementById('nftUsdPrice');
+     const nftEthAmount = parseFloat(nftEthInput?.value);
+     if (nftEthInput && nftUsdOutput) {
+         if (!isNaN(nftEthAmount) && ethToUsd) {
+             nftUsdOutput.value = `$${(nftEthAmount * ethToUsd).toFixed(2)}`;
+         } else {
+             nftUsdOutput.value = '';
+         }
+     }
+
+     // Update USD for Social Link ETH price
+     const socialLinkEthInput = document.getElementById('socialLinkEthPrice');
+     const socialLinkUsdOutput = document.getElementById('socialLinkUsdPrice');
+     const socialLinkEthAmount = parseFloat(socialLinkEthInput?.value);
+     if (socialLinkEthInput && socialLinkUsdOutput) {
+         if (!isNaN(socialLinkEthAmount) && ethToUsd) {
+             socialLinkUsdOutput.value = `$${(socialLinkEthAmount * ethToUsd).toFixed(2)}`;
+         } else {
+             socialLinkUsdOutput.value = '';
+         }
+     }
+}
+
+
+// Listen for changes in all ETH price inputs to update their USD equivalent
+document.getElementById('ethPrice')?.addEventListener('input', updateUsdFields);
+document.getElementById('nftEthPrice')?.addEventListener('input', updateUsdFields);
+document.getElementById('socialLinkEthPrice')?.addEventListener('input', updateUsdFields);
+
+
+// Function to detect region using ipapi.co API
+async function detectRegion() {
+    const regionOutput = document.getElementById('regionOutput');
+     if (!regionOutput) return; // Exit if the element doesn't exist
+
+     try {
+       const res = await fetch('https://ipapi.co/json/');
+       const data = await res.json();
+       const region = `${data.city || 'N/A'}, ${data.region || 'N/A'}, ${data.country_name || 'N/A'}`;
+       regionOutput.innerText = `Region: ${region}`;
+     } catch (error) {
+       regionOutput.innerText = 'Could not detect region.';
+       console.error('Region detection failed:', error);
+     }
+}
+
+// --- Product Management Functions (Using Firestore) ---
+
+// Upload image to Firebase Storage
+async function uploadImage(file) {
+    if (!file) return null;
+    const storageRef = storage.ref();
+    // Create a unique filename (e.g., using timestamp and original name)
+    const filename = `${Date.now()}_${file.name}`;
+    const imageRef = storageRef.child(`product_images/${filename}`); // Store in 'product_images' folder
+    await imageRef.put(file);
+    const downloadURL = await imageRef.getDownloadURL();
+    return downloadURL;
+}
+
+
+// Add Product (Saves to Firestore with connectedWallet)
+async function addProduct() {
+    if (!connectedWallet) {
+        alert("Please connect your wallet to list a product.");
+        return;
+    }
+
+    const name = document.getElementById('productName').value.trim();
+    const description = document.getElementById('productDescription').value.trim();
+
+    // Keywords from all sections
+    const productKeywords = document.getElementById('productKeywords').value.trim().split(',').map(k => k.trim()).filter(k => k !== '');
+    const nftKeywords = document.getElementById('nftKeywords').value.trim().split(',').map(k => k.trim()).filter(k => k !== '');
+    const socialLinkKeywords = document.getElementById('socialLinkKeywords').value.trim().split(',').map(k => k.trim()).filter(k => k !== '');
+    const allKeywords = [...productKeywords, ...nftKeywords, ...socialLinkKeywords]; // Combine keywords
+
+    // Prices from all sections (prioritize standard, then NFT, then social link if multiple entered)
+    const ethPriceMain = parseFloat(document.getElementById('ethPrice').value);
+    const ethPriceNft = parseFloat(document.getElementById('nftEthPrice').value);
+    const ethPriceSocial = parseFloat(document.getElementById('socialLinkEthPrice').value);
+
+     let finalEthPrice = null;
+     if (!isNaN(ethPriceMain)) {
+         finalEthPrice = ethPriceMain;
+     } else if (!isNaN(ethPriceNft)) {
+         finalEthPrice = nftEthPrice;
+     } else if (!isNaN(ethPriceSocial)) {
+         finalEthPrice = socialLinkEthPrice;
+     }
+
+
+    const imageFile = document.getElementById('productImageFile').files[0];
+
+    // NFT Fields
+    const nftContractAddress = document.getElementById('nftContractAddress').value.trim();
+    const nftTokenId = document.getElementById('nftTokenId').value.trim();
+
+    // Social Media Links
+    const instagramUrl = document.getElementById('instagramUrl').value.trim();
+    const tiktokUrl = document.getElementById('tiktokUrl').value.trim();
+    const otherLinkUrl = document.getElementById('otherLinkUrl').value.trim();
+    const linkTitle = document.getElementById('linkTitle').value.trim();
+    const linkDetails = document.getElementById('linkDetails').value.trim();
+
+
+    // Basic validation
+    if (!name || !description) {
+        alert('Please fill in Product Name and Description.');
+        return;
+    }
+     // Validate if at least one price OR NFT details are provided
+     if (isNaN(finalEthPrice) && (!nftContractAddress || !nftTokenId)) {
+         alert('Please enter an ETH Price (in any section) or fill in NFT Contract Address and Token ID.');
+         return;
+      }
+      // Validation for conflicting input (basic) - Prevent image upload if NFT details are provided
+      if (imageFile && (nftContractAddress || nftTokenId)) {
+           alert('Please list either a standard product with image OR an NFT. Do not upload an image if listing an NFT.');
+           return;
+      }
+
+      // Basic NFT format validation (can be improved with regex)
+      if (nftContractAddress && !ethers.utils.isAddress(nftContractAddress)) {
+          alert('Invalid NFT Contract Address format.');
+          return;
+      }
+       if (nftTokenId && isNaN(parseInt(nftTokenId))) {
+           alert('Invalid NFT Token ID. Must be a number.');
+           return;
+        }
+
+
+    let imageUrl = null;
+    if (imageFile) {
+        // Upload image if it's a standard product with an image
+        imageUrl = await uploadImage(imageFile);
+    }
+     // Note: For NFTs, you would typically fetch the image URL from metadata
+     // using the contract address and token ID here. This is NOT implemented.
+
+
+    const productData = {
+        name: name,
+        description: description,
+        keywords: allKeywords, // Save combined keywords
+        ethPrice: finalEthPrice, // Save the determined ETH price
+        imageUrl: imageUrl, // Store image URL from upload
+
+        // NFT Data (Store if provided)
+        nftContractAddress: nftContractAddress || null,
+        nftTokenId: nftTokenId || null,
+        // nftMetadataUrl: '...' // You would ideally store a URL to NFT metadata here
+
+        // Social Media Links (Store if provided)
+        instagramUrl: instagramUrl || null,
+        tiktokUrl: tiktokUrl || null,
+        otherLinkUrl: otherLinkUrl || null,
+        linkTitle: linkTitle || null, // New: Link Title
+        linkDetails: linkDetails || null, // New: Link Details
+         // Add other social media fields here
+
+        sellerWallet: connectedWallet.toLowerCase(), // Associate product with the connected seller's wallet
+        timestamp: firebase.firestore.FieldValue.serverTimestamp() // Add server timestamp
+    };
+
+    try {
+        // Add the product data to the 'products' collection in Firestore
+        await db.collection('products').add(productData);
+        alert('Product added successfully!');
+        clearFields(); // Clear form fields after successful addition
+    } catch (error) {
+        console.error("Error adding product:", error);
+        alert('Error adding product: ' + error.message);
+    }
+}
+
+
+// Clear form fields
+function clearFields() {
+    document.getElementById('productName').value = '';
+    document.getElementById('productDescription').value = '';
+
+    document.getElementById('productKeywords').value = '';
+    document.getElementById('ethPrice').value = '';
+    document.getElementById('usdPrice').value = '';
+    document.getElementById('productImageFile').value = ''; // Clear file input
+
+    document.getElementById('nftContractAddress').value = '';
+    document.getElementById('nftTokenId').value = '';
+    document.getElementById('nftKeywords').value = '';
+    document.getElementById('nftEthPrice').value = '';
+    document.getElementById('nftUsdPrice').value = '';
+
+    document.getElementById('instagramUrl').value = '';
+    document.getElementById('tiktokUrl').value = '';
+    document.getElementById('otherLinkUrl').value = '';
+    document.getElementById('linkTitle').value = '';
+    document.getElementById('linkDetails').value = '';
+    document.getElementById('socialLinkKeywords').value = '';
+    document.getElementById('socialLinkEthPrice').value = '';
+    document.getElementById('socialLinkUsdPrice').value = '';
+    // Clear other social media fields
+}
+
+
+// --- Payment Info Functions (Using Firestore) ---
+
+// Function to save payment addresses to Firestore for the connected wallet
+async function savePaymentInfo() {
+    if (!connectedWallet) {
+        alert("Please connect your wallet first.");
+        return;
+    }
+
+    const venmo = document.getElementById('venmoIdentifier').value.trim();
+    const cashApp = document.getElementById('cashAppIdentifier').value.trim();
+    const paypal = document.getElementById('paypalIdentifier').value.trim();
+    const googlePay = document.getElementById('googlePayIdentifier').value.trim();
+    const applePay = document.getElementById('applePayIdentifier').value.trim();
+
+    // Create an object with only the non-empty payment identifiers
+    const paymentDataToSave = {};
+    if (venmo) paymentDataToSave.venmo = venmo;
+    if (cashApp) paymentDataToSave.cashApp = cashApp;
+    if (paypal) paymentDataToSave.paypal = paypal;
+    if (googlePay) paymentDataToSave.googlePay = googlePay;
+    if (applePay) paymentDataToSave.applePay = applePay;
+
+    // Add a timestamp
+    paymentDataToSave.lastUpdated = firebase.firestore.FieldValue.serverTimestamp();
+
+    // Get the save status message element
+    const saveStatusMessage = document.getElementById('saveStatusMessage');
+    if (!saveStatusMessage) {
+        console.error("Save status message element not found!");
+        alert('Payment information saved successfully!'); // Fallback to alert
+        return;
+    }
+
+    // Store payment info under a document named by the connected wallet address
+    const sellerPaymentInfoRef = db.collection('sellerPaymentInfo').doc(connectedWallet.toLowerCase());
+
+    try {
+        // Use merge: true so only the provided fields are updated/added
+        await sellerPaymentInfoRef.set(paymentDataToSave, { merge: true });
+
+        // Display the success message
+        saveStatusMessage.textContent = 'Payment information saved successfully!';
+        saveStatusMessage.style.color = 'green'; // Ensure it's green
+        saveStatusMessage.style.display = 'block';
+
+        // Hide the message after 3 seconds
+        setTimeout(() => {
+            saveStatusMessage.style.display = 'none';
+        }, 3000); // 3000 milliseconds = 3 seconds
+
+        // Optional: Keep the alert as well, or remove it if you only want the on-page message
+        // alert('Payment information saved successfully!');
+
+    } catch (error) {
+        console.error("Error saving payment info:", error);
+        // Display an error message on the page
+        saveStatusMessage.textContent = 'Error saving payment information: ' + error.message;
+        saveStatusMessage.style.color = 'red'; // Make it red for errors
+        saveStatusMessage.style.display = 'block';
+
+         // Hide the error message after 5 seconds (or longer if preferred)
+        setTimeout(() => {
+            saveStatusMessage.style.display = 'none';
+        }, 5000); // 5000 milliseconds = 5 seconds
+
+        // Optional: Keep the alert as well
+        // alert('Error saving payment information: ' + error.message);
+    }
+}
+
+// Function to load payment addresses from Firestore for the connected wallet
+async function loadPaymentInfo(walletAddress) {
+     if (!walletAddress) return;
+
+     console.log("Attempting to load payment info for wallet:", walletAddress); // Added log
+
+     // Load payment info from the document named by the wallet address
+     const sellerPaymentInfoRef = db.collection('sellerPaymentInfo').doc(walletAddress.toLowerCase());
+
+     try {
+         const doc = await sellerPaymentInfoRef.get();
+         if (doc.exists) {
+             const data = doc.data();
+             // Populate fields only if the data exists
+             document.getElementById('venmoIdentifier').value = data.venmo || '';
+             document.getElementById('cashAppIdentifier').value = data.cashApp || '';
+             document.getElementById('paypalIdentifier').value = data.paypal || '';
+             document.getElementById('googlePayIdentifier').value = data.googlePay || '';
+             document.getElementById('applePayIdentifier').value = data.applePay || '';
+         } else {
+             console.log("No payment information found for this seller.");
+             // Clear fields if no data exists for this wallet
+             document.getElementById('venmoIdentifier').value = '';
+             document.getElementById('cashAppIdentifier').value = '';
+             document.getElementById('paypalIdentifier').value = '';
+             document.getElementById('googlePayIdentifier').value = '';
+             document.getElementById('applePayIdentifier').value = '';
+         }
+     } catch (error) {
+         console.error("Error loading payment info:", error);
+         // Display an error message on the page if loading fails
+         const saveStatusMessage = document.getElementById('saveStatusMessage');
+         if (saveStatusMessage) {
+             saveStatusMessage.textContent = 'Error loading payment information: ' + error.message;
+             saveStatusMessage.style.color = 'red';
+             saveStatusMessage.style.display = 'block';
+              setTimeout(() => {
+                saveStatusMessage.style.display = 'none';
+            }, 5000);
+         } else {
+             alert('Error loading payment information: ' + error.message);
+         }
+     }
+}
+
+
+// --- Support Messages Functions (Using Firestore) ---
+
+// Load Support Messages from Firestore for the connected wallet
+async function loadSupportMessages(walletAddress) {
+    const supportList = document.getElementById('supportMessageList');
+     if (!supportList || !walletAddress) return; // Exit if elements don't exist or no wallet
+
+    supportList.innerHTML = '<p>Loading messages...</p>';
+
+    try {
+        // Assuming support messages have a 'sellerWallet' field
+        const messagesSnapshot = await db.collection('supportMessages')
+                                        .where('sellerWallet', '==', walletAddress.toLowerCase()) // Filter by seller wallet
+                                        .orderBy('timestamp', 'desc')
+                                        .get();
+        const messages = messagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        supportList.innerHTML = ''; // Clear current list
+
+        if (messages.length === 0) {
+            supportList.innerHTML = '<p>No support messages for your items.</p>';
+            return;
+        }
+
+        messages.forEach(msg => {
+            const li = document.createElement('li');
+             const msgDate = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'N/A';
+            li.innerHTML = `<strong>${msg.name || 'Anonymous'}</strong> (${msgDate}): ${msg.message || 'No message content'}`;
+            supportList.appendChild(li);
+        });
+
+    } catch (error) {
+        console.error("Error loading support messages:", error);
+        supportList.innerHTML = '<p style="color: red;">Error loading messages.</p>';
+    }
+}
+
+// Delete All Support Messages from Firestore for the connected wallet
+async function deleteAllMessages() {
+     if (!document.getElementById('supportMessageList') || !connectedWallet) {
+         alert("Please connect your wallet first.");
+         return;
+     }
+
+    if (confirm('Are you sure you want to delete all support messages for your items? This cannot be undone.')) {
+        try {
+            // Delete only messages where sellerWallet matches the connected wallet
+            const snapshot = await db.collection('supportMessages')
+                                    .where('sellerWallet', '==', connectedWallet.toLowerCase())
+                                    .get();
+            const batch = db.batch();
+            snapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            alert('All support messages for your items deleted.');
+            loadSupportMessages(connectedWallet); // Refresh the list
+        } catch (error) {
+            console.error("Error deleting all messages:", error);
+            alert('Error deleting all messages: ' + error.message);
+        }
+    }
+}
+
+
+// --- Orders Functions (Using Firestore) ---
+
+// Load Orders from Firestore for the connected wallet
+async function loadOrders(walletAddress) {
+    const orderList = document.getElementById('orderList');
+    const orderCounter = document.getElementById('orderCounter');
+    const sellerOrderValueSpan = document.getElementById('sellerOrderValue'); // Use the updated ID
+     if (!orderList || !orderCounter || !sellerOrderValueSpan || !walletAddress) return; // Exit if elements don't exist or no wallet
+
+
+    orderList.innerHTML = '<p>Loading orders...</p>';
+    orderCounter.textContent = '...'; // Indicate loading
+
+    try {
+        // Assuming orders have a 'sellerWallet' field
+        const ordersSnapshot = await db.collection('orders')
+                                       .where('sellerWallet', '==', walletAddress.toLowerCase()) // Filter by seller wallet
+                                       .orderBy('timestamp', 'desc')
+                                       .get();
+        const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        orderList.innerHTML = ''; // Clear current list
+        orderCounter.textContent = orders.length; // Update counter
+
+        if (orders.length === 0) {
+            orderList.innerHTML = '<p>No recent orders for your items.</p>';
+            sellerOrderValueSpan.textContent = '0';
+            return;
+        }
+
+        let totalOrderValueUsd = 0;
+
+        orders.forEach(order => {
+            const li = document.createElement('li');
+            const orderDate = order.timestamp ? new Date(order.timestamp.toDate()).toLocaleString() : 'N/A';
+            const buyerShort = order.buyerWallet ? order.buyerWallet.slice(0, 6) + '...' + order.buyerWallet.slice(-4) : 'N/A';
+             const totalEth = order.totalEth || 0;
+             // Calculate USD value using the fetched rate
+             const orderValueUsd = ethToUsd ? (totalEth * ethToUsd).toFixed(2) : 'N/A';
+
+             // Add to total if USD value is available and a valid number
+             if (ethToUsd && !isNaN(parseFloat(orderValueUsd))) {
+                 totalOrderValueUsd += parseFloat(orderValueUsd);
+             }
+
+
+            li.innerHTML = `
+                  <strong>Order for:</strong> ${order.productName || 'N/A'} (x${order.quantity || 1})<br>
+                  <strong>Buyer:</strong> ${buyerShort}<br>
+                  <strong>Total ETH:</strong> ${totalEth} ${ethToUsd ? '(~$' + orderValueUsd + ')' : ''}<br>
+                  <strong>Date:</strong> ${orderDate}
+                  `;
+            orderList.appendChild(li);
+        });
+
+         // Update total order value display
+         sellerOrderValueSpan.textContent = ethToUsd ? totalOrderValueUsd.toFixed(2) : 'N/A';
+
+
+    } catch (error) {
+        console.error("Error loading orders:", error);
+        orderList.innerHTML = '<p style="color: red;">Error loading orders.</p>';
+        orderCounter.textContent = 'Error';
+        sellerOrderValueSpan.textContent = 'Error';
+    }
+}
+
+// --- Wallet Connection Logic (Adapted from index.txt) ---
+
+async function connectWallet() {
+    const statusMessage = document.getElementById('statusMessage');
+    const walletDisplay = document.getElementById('walletDisplay');
+    const connectedWalletAddressDiv = document.getElementById('connectedWalletAddress');
+    const connectedContent = document.getElementById('connectedContent');
+    const connectBtn = document.getElementById('connectWalletBtn');
+
+
+    // Check if MetaMask or similar wallet is installed (includes OKX Wallet)
+    if (typeof window.ethereum !== 'undefined') {
+        try {
+            // Request account access
+            console.log("Requesting wallet accounts...");
+            provider = new ethers.providers.Web3Provider(window.ethereum, "any"); // Initialize provider
+            const accounts = await provider.send("eth_requestAccounts", []);
+            connectedWallet = accounts[0]; // Get the first account
+            signer = provider.getSigner(); // Initialize signer
+            console.log("Wallet connected:", connectedWallet);
+
+            // Display connected wallet address
+            walletDisplay.textContent = connectedWallet;
+            connectedWalletAddressDiv.style.display = 'block';
+            statusMessage.style.display = 'none'; // Hide status message on successful connection
+            connectBtn.textContent = '✅ Connected'; // Update button text
+
+            // Show connected content and load data for this wallet
+            connectedContent.style.display = 'block';
+            loadOrders(connectedWallet);
+            loadSupportMessages(connectedWallet);
+            loadPaymentInfo(connectedWallet); // Load payment info when wallet connects
+
+
+            // Add event listeners for account/chain changes after successful connection
+           window.ethereum.on('accountsChanged', handleAccountsChanged);
+           window.ethereum.on('chainChanged', handleChainChanged);
+
+
+        } catch (error) {
+            console.error("Error connecting wallet:", error);
+            statusMessage.textContent = 'Error connecting wallet. ' + error.message;
+            statusMessage.style.display = 'block';
+            connectedWallet = null; // Clear connected wallet on error
+            walletDisplay.textContent = '';
+            connectedWalletAddressDiv.style.display = 'none';
+            connectBtn.textContent = '🔌 Connect Wallet'; // Reset button text
+            // Hide connected content if connection fails
+            connectedContent.style.display = 'none';
+        }
+    } else {
+        // If no injected wallet is found
+        statusMessage.textContent = 'No Ethereum wallet found (e.g., MetaMask, OKX Wallet). Please install one.';
+        statusMessage.style.display = 'block';
+        connectedWallet = null;
+        walletDisplay.textContent = '';
+        connectedWalletAddressDiv.style.display = 'none';
+        connectBtn.textContent = '🔌 Connect Wallet'; // Reset button text
+        // Hide connected content
+        connectedContent.style.display = 'none';
+    }
+}
+
+// Handle accounts changed event (Adapted from index.txt)
+function handleAccountsChanged(accounts) {
+    console.log('Accounts changed:', accounts);
+    if (accounts.length === 0) {
+        // Wallet locked or no accounts connected
+        console.log('Wallet disconnected or accounts removed.');
+        disconnectWallet(); // Treat as disconnected in the UI
+        alert('Wallet disconnected. Please connect again.');
+    } else if (accounts[0].toLowerCase() !== connectedWallet?.toLowerCase()) {
+        // Account changed - update display and reload data
+        console.log('Account changed to:', accounts[0]);
+        connectedWallet = accounts[0]; // Update connected wallet
+        document.getElementById('walletDisplay').textContent = connectedWallet; // Update display
+        alert('Account changed. Reloading data for the new account.');
+        // Reload data for the new account
+        loadOrders(connectedWallet);
+        loadSupportMessages(connectedWallet);
+        loadPaymentInfo(connectedWallet); // Reload payment info for the new account
+    }
+}
+
+// Handle chain changed event (Adapted from index.txt)
+function handleChainChanged(chainId) {
+  // We should reload the page or re-initialize the provider if the network changes
+  console.log('Chain changed to:', chainId);
+  // A simple approach is to prompt the user to reload the page
+  alert('Ethereum network changed. Please reload the page.');
+   window.location.reload(); // Force a reload
+}
+
+// Disconnect wallet (Adapted from index.txt)
+function disconnectWallet() {
+  connectedWallet = null;
+  provider = null; // Clear provider and signer
+  signer = null;
+  if (window.ethereum) {
+        // Remove listeners to prevent them from firing after manual disconnect
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+    }
+  document.getElementById('walletDisplay').textContent = ''; // Clear display
+  document.getElementById('connectedWalletAddress').style.display = 'none'; // Hide display
+  document.getElementById('connectWalletBtn').textContent = '🔌 Connect Wallet'; // Reset button text
+  document.getElementById('statusMessage').textContent = 'Please connect your wallet to continue.'; // Show status
+  document.getElementById('statusMessage').style.display = 'block';
+  document.getElementById('connectedContent').style.display = 'none'; // Hide content
+  console.log("Wallet display disconnected.");
+  // Note: This function only updates the UI and clears variables. The actual wallet connection is managed by the browser extension.
+}
+
+
+// --- Event Listeners and Initialization ---
+
+document.addEventListener('DOMContentLoaded', async () => {
+
+    // Fetch ETH price on load
+    fetchEthUsdPrice();
+
+    // Region Detection on load
+    detectRegion();
+
+    // Wallet Connect Button Listener
+    document.getElementById('connectWalletBtn')?.addEventListener('click', connectWallet);
+
+    // Add Product button listener
+    document.getElementById('addProductBtn')?.addEventListener('click', addProduct);
+
+    // Clear Fields button listener
+    document.getElementById('clearFieldsBtn')?.addEventListener('click', clearFields);
+
+    // Save Payment Info button listener
+    document.getElementById('savePaymentInfoBtn')?.addEventListener('click', savePaymentInfo);
+
+
+    // Order Notification button listener (Toggles visibility of order list)
+    document.getElementById('orderNotificationBtn')?.addEventListener('click', () => {
+      const orderListContainer = document.getElementById('orderListContainer');
+      if (orderListContainer) {
+          const isVisible = orderListContainer.style.display === 'block';
+          orderListContainer.style.display = isVisible ? 'none' : 'block';
+          // No need to reload here, loadOrders is called on connection or account change
+      }
+    });
+
+    // Delete All Orders button listener
+    document.getElementById('deleteAllOrdersBtn')?.addEventListener('click', deleteAllOrders);
+
+    // Delete All Messages button listener
+    document.getElementById('deleteAllMessagesBtn')?.addEventListener('click', deleteAllMessages);
+
+
+    // Initial display state (hide connected content until wallet is connected)
+    document.getElementById('connectedContent').style.display = 'none';
+    document.getElementById('statusMessage').style.display = 'block'; // Show initial status message
+
+    // Initial state for lists before connection
+    document.getElementById('orderList').innerHTML = '<p>Connect your wallet to see your orders.</p>';
+    document.getElementById('supportMessageList').innerHTML = '<p>Connect your wallet to see your messages.</p>';
+
+    // Attempt to connect wallet automatically on load if window.ethereum is available
+    // This is a common pattern for a smoother user experience
+    if (typeof window.ethereum !== 'undefined') {
+        // Check if accounts are already connected
+        try {
+             provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+             const accounts = await provider.listAccounts();
+             if (accounts.length > 0) {
+                 // If accounts are found, treat as already connected
+                 connectedWallet = accounts[0];
+                 signer = provider.getSigner();
+                 updateWalletDisplay(connectedWallet); // Update UI
+                 // Show connected content and load data
+                 document.getElementById('connectedContent').style.display = 'block';
+                 document.getElementById('statusMessage').style.display = 'none';
+                 loadOrders(connectedWallet);
+                 loadSupportMessages(connectedWallet);
+                 loadPaymentInfo(connectedWallet); // Load payment info on auto-connect
+
+
+                 // Add listeners for existing connections
+                 window.ethereum.on('accountsChanged', handleAccountsChanged);
+                 window.ethereum.on('chainChanged', handleChainChanged);
+
+             } else {
+                 // No accounts found, wallet is installed but not connected
+                 console.log("Wallet installed but no accounts connected.");
+                 updateWalletDisplay(null); // Ensure UI shows disconnected state
+             }
+        } catch (error) {
+            console.error("Error checking initial wallet connection:", error);
+            updateWalletDisplay(null); // Ensure UI shows disconnected state on error
+        }
+    } else {
+        // Wallet not installed
+        updateWalletDisplay(null); // Ensure UI shows disconnected state
+    }
+});
+
+// Function to update the wallet display and button text (Adapted from index.txt)
+function updateWalletDisplay(account) {
+    const walletDisplay = document.getElementById('walletDisplay');
+    const connectBtn = document.getElementById('connectWalletBtn');
+    const connectedWalletAddressDiv = document.getElementById('connectedWalletAddress');
+
+    if (account) {
+      const short = account.slice(0, 6) + "..." + account.slice(-4);
+      walletDisplay.textContent = account; // Display full address in span
+      connectedWalletAddressDiv.style.display = 'block'; // Show the display div
+      connectBtn.textContent = '✅ Connected'; // Update button text
+      // You might want to add a button here to disconnect the wallet display if needed
+    } else {
+        // Wallet is disconnected
+        walletDisplay.textContent = ''; // Clear display
+        connectedWalletAddressDiv.style.display = 'none'; // Hide the display div
+        connectBtn.textContent = '🔌 Connect Wallet'; // Reset button text
+    }
+}
+
+
+</script>
+</body>
+</html>
