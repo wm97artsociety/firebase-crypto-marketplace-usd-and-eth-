@@ -5,6 +5,13 @@ perfect software ready for selling
 
 new update v1.01
 
+ social media posts
+ 
+ token id and contract section for nfts (needs api) 
+ 
+ SEO for products google index,product htmls  for max views on the worldwideweb seo is search enigine opitimization when you look up red hat 
+ it shows things of red hats youre hat would show on this list 
+
 payment in usd through sites like venmo,cashapp,apple pay, google pay, and paypal while also in eth (update payment apis to work payment options)
 
 0.5% optional market owner fee for crypto 
@@ -32,7 +39,5 @@ buy a domain name and sub domain name or get one free from ai
 upload files to a hosting center like godaddy
 
 perks to the software firebase product center update firebase api and such on the code to activate product display globally
-
-crypto payments with usd payments tax download papers for taxs easy sell and do tax feature support center for buying simple admin panel for items sellable nft section and social media post token id and contract section for nfts SEO for products google index for pages and products
 
 what cant i say this software can sell anything through crypto open source and awesome
